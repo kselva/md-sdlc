@@ -38,6 +38,18 @@ pip install pyinstaller
 python -m PyInstaller md_sdlc.spec --distpath dist --workpath build
 ```
 
+**If contributing to this repo:** install the pre-commit leak check once
+after cloning — `git clone` never copies `.git/hooks/`, so this doesn't
+happen automatically:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+It scans staged files against `.leakcheck` (internal project names that
+must never reach this public repo) before every commit and blocks the
+commit if it finds a match.
+
 ## Initializing a project
 
 Targeting is git-style: no central registry of project paths. Each project marks
