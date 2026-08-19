@@ -78,6 +78,15 @@ class Command(BaseCommand):
                 if not is_valid_review_status(row.status):
                     violations.append(f"{review_md.relative_to(repo.root)}: finding '{row.id}' has invalid status '{row.status}'")
 
+            if item.status == "done":
+                unresolved = [r for r in rows if r.status in ("open", "changes-requested")]
+                for row in unresolved:
+                    violations.append(
+                        f"{item.path.relative_to(repo.root)}: status is 'done' but "
+                        f"{review_md.relative_to(repo.root)} has unresolved finding "
+                        f"'{row.id}' (status={row.status})"
+                    )
+
         if violations:
             print(f"VALIDATION FAILED - {len(violations)} violation(s):\n")
             for v in violations:
