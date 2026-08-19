@@ -57,10 +57,14 @@ def resolve_project(start: Path | None = None) -> Project:
 
     marker_version = config.get("tool_version")
     if marker_version and marker_version != __version__:
-        logger.warning(
-            "project '%s' was initialized with md_sdlc %s, running %s - "
-            "run 'validate' after any tool upgrade to confirm nothing changed behavior",
-            config.get("name", root.name), marker_version, __version__,
+        # stdout, not logger.warning (stderr) - PowerShell 5.1 wraps any stderr
+        # output from a native exe into a NativeCommandError/ErrorRecord even at
+        # exit code 0, which callers scripting against this CLI can misread as
+        # a real failure.
+        print(
+            f"WARNING - project '{config.get('name', root.name)}' was initialized "
+            f"with md_sdlc {marker_version}, running {__version__} - run 'validate' "
+            f"after any tool upgrade to confirm nothing changed behavior"
         )
 
     logger.debug("Resolved project at %s", root)
