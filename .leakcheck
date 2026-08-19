@@ -1,0 +1,15 @@
+# Internal/private names that must never appear in this PUBLIC repo.
+# One pattern per line (basic extended regex, case-insensitive). Blank lines
+# and lines starting with # are ignored.
+#
+# Used by scripts/check-leaks.sh, which pre-commit.sample-derived hooks call.
+# Add a name here the moment it's used as an example anywhere in this repo -
+# don't wait for it to actually leak first.
+
+STO_Code
+STO Code
+DataSync
+OrderRight
+Order Right
+USF-algo
+kselvaganapathy

@@ -88,7 +88,7 @@ set and status vocabulary.
 ## 6. Why git-style `.sdlc/` marker discovery, not a central config registry
 
 The first version used one `config.yml` inside the tool listing every
-tracked project's path (`profiles: { sto_code: { path: ... } }`). Replaced
+tracked project's path (`profiles: { my_project: { path: ... } }`). Replaced
 because a central registry is exactly the kind of thing this whole design
 was trying to avoid elsewhere — a hand-maintained pointer that silently
 drifts (a project moves, the registry doesn't get updated, and nothing
