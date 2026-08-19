@@ -4,6 +4,11 @@ CLI for tracking Epics/Stories/Tasks/Proposals/Ad hoc work as markdown files wit
 frontmatter, across one or more project `ai-docs/`-style trees. A file-based,
 lightweight alternative to a JIRA board.
 
+- **This file** — setup and command usage
+- [`CONVENTIONS.md`](CONVENTIONS.md) — the enforceable naming/folder/status/schema rules (`md_sdlc conventions` prints this)
+- [`DESIGN_NOTES.md`](DESIGN_NOTES.md) — why it's built this way, what's deliberately not built, known rough edges
+- [`CHANGELOG.md`](CHANGELOG.md) — what shipped in each version
+
 ## How it works
 
 Every tracked file has a YAML frontmatter header (`id`, `type`, `kind`, `status`,
