@@ -9,8 +9,8 @@ import re
 from pathlib import Path
 
 from core import frontmatter as fmparse
-from core.models import TaskRow, WorkItemFile
-from core.vocab import TASK_ROW_COLUMNS, kind_for_type
+from core.models import ReviewRow, TaskRow, WorkItemFile
+from core.vocab import REVIEW_ROW_COLUMNS, TASK_ROW_COLUMNS, kind_for_type
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +25,14 @@ class AiDocsRepo:
         self.root = Path(root)
         self.project = project
 
+    _ROW_TABLE_FILENAMES = {"tasks.md", "review.md"}
+
     def all_files(self) -> list[WorkItemFile]:
         """Walk the tree, parse frontmatter from every .md file that has any."""
         items = []
         for path in sorted(self.root.rglob("*.md")):
-            if path.name == "tasks.md":
-                continue  # rows, not a single record - see task_rows()
+            if path.name in self._ROW_TABLE_FILENAMES:
+                continue  # rows, not a single record - see task_rows()/review_rows()
             if ".sdlc" in path.parts:
                 continue  # marker folder, never tracked content
             item = self._parse_file(path)
@@ -80,36 +82,50 @@ class AiDocsRepo:
 
     def task_rows(self, story_id: str) -> list[TaskRow]:
         """Read the tasks.md table for a given Story, if it exists."""
+        rows = self._read_row_table(story_id, "tasks.md", TASK_ROW_COLUMNS)
+        return [
+            TaskRow(
+                id=r["id"], status=r["status"], scenario=r.get("scenario") or None,
+                owner=r.get("owner") or None, updated=r.get("updated") or None,
+                summary=r.get("summary", ""), story_id=story_id, row_index=idx,
+            )
+            for idx, r in enumerate(rows)
+        ]
+
+    def review_rows(self, story_id: str) -> list[ReviewRow]:
+        """Read the review.md table for a given Story, if it exists."""
+        rows = self._read_row_table(story_id, "review.md", REVIEW_ROW_COLUMNS)
+        return [
+            ReviewRow(
+                id=r["id"], severity=r.get("severity") or None, status=r["status"],
+                summary=r.get("summary", ""), reported_by=r.get("reported_by") or None,
+                updated=r.get("updated") or None, story_id=story_id, row_index=idx,
+            )
+            for idx, r in enumerate(rows)
+        ]
+
+    def _read_row_table(self, story_id: str, filename: str, columns: list[str]) -> list[dict]:
         story = self.find(story_id)
         if story is None:
             return []
-        tasks_md = story.path.parent / "tasks.md"
-        if not tasks_md.exists():
+        table_path = story.path.parent / filename
+        if not table_path.exists():
             return []
-        return self._parse_task_table(tasks_md, story_id)
+        return self._parse_markdown_table(table_path, columns)
 
-    def _parse_task_table(self, tasks_md: Path, story_id: str) -> list[TaskRow]:
+    @staticmethod
+    def _parse_markdown_table(path: Path, columns: list[str]) -> list[dict]:
         rows = []
-        text = tasks_md.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
         lines = [l for l in text.splitlines() if l.strip().startswith("|")]
         if len(lines) < 2:
             return rows
         # skip header + separator line
-        for idx, line in enumerate(lines[2:]):
+        for line in lines[2:]:
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            if len(cells) < len(TASK_ROW_COLUMNS):
+            if len(cells) < len(columns):
                 continue
-            row_dict = dict(zip(TASK_ROW_COLUMNS, cells))
-            rows.append(TaskRow(
-                id=row_dict["id"],
-                status=row_dict["status"],
-                scenario=row_dict.get("scenario") or None,
-                owner=row_dict.get("owner") or None,
-                updated=row_dict.get("updated") or None,
-                summary=row_dict.get("summary", ""),
-                story_id=story_id,
-                row_index=idx,
-            ))
+            rows.append(dict(zip(columns, cells)))
         return rows
 
     def next_sequence(self, parent_id: str, type_: str) -> int:
@@ -120,6 +136,16 @@ class AiDocsRepo:
             if s.type != type_:
                 continue
             match = re.search(r"-(\d+)-", s.id + "-")
+            if match:
+                max_n = max(max_n, int(match.group(1)))
+        return max_n + 1
+
+    def next_review_sequence(self, story_id: str) -> int:
+        """Compute the next NN for RVW-<nn> rows in a Story's review.md."""
+        rows = self.review_rows(story_id)
+        max_n = 0
+        for r in rows:
+            match = re.search(r"(\d+)$", r.id)
             if match:
                 max_n = max(max_n, int(match.group(1)))
         return max_n + 1

@@ -8,7 +8,7 @@ import argparse
 import sys
 
 from core.repo import AiDocsRepo
-from core.vocab import SCENARIOS, is_valid_status, prefix_for_type
+from core.vocab import SCENARIOS, is_valid_review_status, is_valid_status, prefix_for_type
 from plugins.base_plugin import BaseCommand
 
 
@@ -61,6 +61,22 @@ class Command(BaseCommand):
                 seen_ids.add(row.id)
                 if not is_valid_status("task", row.status):
                     violations.append(f"{tasks_md.relative_to(repo.root)}: row '{row.id}' has invalid status '{row.status}'")
+
+        # review.md row validation
+        for item in items:
+            if item.type != "story":
+                continue
+            review_md = item.path.parent / "review.md"
+            if not review_md.exists():
+                continue
+            rows = repo.review_rows(item.id)
+            seen_ids = set()
+            for row in rows:
+                if row.id in seen_ids:
+                    violations.append(f"{review_md.relative_to(repo.root)}: duplicate finding id '{row.id}'")
+                seen_ids.add(row.id)
+                if not is_valid_review_status(row.status):
+                    violations.append(f"{review_md.relative_to(repo.root)}: finding '{row.id}' has invalid status '{row.status}'")
 
         if violations:
             print(f"VALIDATION FAILED - {len(violations)} violation(s):\n")

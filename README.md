@@ -146,6 +146,27 @@ A promoted Proposal gets `status: done` (its job — leading to a decision — i
 finished) rather than a new vocabulary word; the resulting Epic carries
 `originated_from:` and the Proposal carries `promoted:`.
 
+### review
+
+Multi-agent (or multi-person) handoff: one agent designs/codes a Story, a
+second reviews it and writes findings to `STORY-xx/review.md`, the first
+agent fixes and resolves them.
+
+```bash
+# reviewer reports a finding
+md_sdlc review report --story STORY-01-first-slice \
+  --summary "Race condition in retry logic" --severity critical --reported-by agent-2
+
+# author resolves it after fixing
+md_sdlc review resolve RVW-01 --story STORY-01-first-slice --status fixed
+```
+
+`--status` accepts `fixed`, `wontfix`, or `changes-requested` (sends it back
+for another look). Findings use their own status vocabulary (open ->
+changes-requested -> fixed/wontfix), separate from task/story status — see
+`CONVENTIONS.md` §5. The Story's own status can be `in-review` while its
+`review.md` still has open rows.
+
 ### archive
 
 Move a terminal-status item to `hist/`. Refuses on any non-terminal status —
@@ -176,12 +197,12 @@ md-sdlc/
   core/
     profile.py                 # git-style .sdlc/ marker discovery
     frontmatter.py               # parse/write YAML frontmatter (pure serialization)
-    models.py                     # WorkItemFile, TaskRow dataclasses
+    models.py                     # WorkItemFile, TaskRow, ReviewRow dataclasses
     vocab.py                       # fixed type/status/scenario vocabulary + slugify
     repo.py                         # AiDocsRepo - the only filesystem touchpoint
   plugins/
     base_plugin.py                # BaseCommand(ABC)
-    validate/ backlog/ query/ new/ promote/ archive/ init/
+    validate/ backlog/ query/ new/ promote/ archive/ init/ review/ conventions/
   tests/
     fixtures/                     # committed regression fixtures, incl. one
                                    # deliberate broken-link violation for validate

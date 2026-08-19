@@ -5,6 +5,11 @@
 # and CONVENTIONS.md as data (read as files at runtime, invisible to static
 # analysis) and declares every plugin module as a hidden import, since
 # plugins/__init__.py's frozen path imports them by string name.
+#
+# hiddenimports below MUST match plugins/__init__.py's _FROZEN_PLUGIN_MODULES
+# exactly - adding a plugin without updating both makes the exe silently drop
+# the command (still works fine when run as `python sdlc_tool.py`, so this is
+# easy to miss until someone runs the built exe).
 
 a = Analysis(
     ['sdlc_tool.py'],
@@ -23,6 +28,7 @@ a = Analysis(
         'plugins.promote.plugin',
         'plugins.archive.plugin',
         'plugins.conventions.plugin',
+        'plugins.review.plugin',
     ],
     hookspath=[],
     hooksconfig={},

@@ -20,7 +20,10 @@ from plugins.base_plugin import BaseCommand
 
 logger = logging.getLogger(__name__)
 
-# Kept in sync with plugins/*/plugin.py - used only when frozen (see module docstring)
+# Kept in sync with plugins/*/plugin.py AND md_sdlc.spec's hiddenimports list -
+# used only when frozen (see module docstring). Adding a plugin needs BOTH
+# updated, or the exe silently drops the command while `python sdlc_tool.py`
+# still works fine - this bit twice during development, hence the note.
 _FROZEN_PLUGIN_MODULES = [
     "plugins.init.plugin",
     "plugins.validate.plugin",
@@ -30,6 +33,7 @@ _FROZEN_PLUGIN_MODULES = [
     "plugins.promote.plugin",
     "plugins.archive.plugin",
     "plugins.conventions.plugin",
+    "plugins.review.plugin",
 ]
 
 

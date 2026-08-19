@@ -8,8 +8,15 @@ type/status/kind values is fixed so validation has a stable contract.
 Source: ai-docs/plan/SDLC_Tracking_System_Design.md, sections 4, 6, 8.
 """
 
-WORK_ITEM_STATUSES = {"proposed", "not-started", "in-progress", "blocked", "done", "abandoned"}
+WORK_ITEM_STATUSES = {"proposed", "not-started", "in-progress", "in-review", "blocked", "done", "abandoned"}
 ARTIFACT_STATUSES = {"draft", "approved", "current", "superseded"}
+
+# Review-row-specific vocabulary (review.md rows, see REVIEW_ROW_COLUMNS) -
+# separate from WORK_ITEM_STATUSES because a finding isn't a unit of planned
+# work: it has no "not-started" (it exists because it was already found) and
+# "changes-requested" sends it back to the author, which has no equivalent
+# in the work-item flow.
+REVIEW_ROW_STATUSES = {"open", "changes-requested", "fixed", "wontfix"}
 
 # type -> kind is a fixed lookup, not an independently-set field. This removes
 # an entire class of validation error (kind disagreeing with type) by construction.
@@ -48,6 +55,8 @@ SCENARIOS = {
 }
 
 TASK_ROW_COLUMNS = ["id", "status", "scenario", "owner", "updated", "summary"]
+REVIEW_ROW_COLUMNS = ["id", "severity", "status", "summary", "reported_by", "updated"]
+REVIEW_SEVERITIES = {"critical", "high", "medium", "low"}
 
 
 def slugify(title: str) -> str:
@@ -74,6 +83,10 @@ def is_valid_status(type_: str, status: str) -> bool:
     if kind is None:
         return False
     return status in statuses_for_kind(kind)
+
+
+def is_valid_review_status(status: str) -> bool:
+    return status in REVIEW_ROW_STATUSES
 
 
 def prefix_for_type(type_: str) -> str | None:

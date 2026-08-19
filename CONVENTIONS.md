@@ -42,6 +42,7 @@ belongs to this Story," no field required.
       story.md
       lld.md                    # flat if <=3 design docs, else design/ subfolder
       tasks.md                   # small tasks as rows (see §4)
+      review.md                   # reviewer findings as rows (see §5)
       TASK-07-promoted-task.md   # a row promoted to its own file
     STORY-02-ui-integration/
       story.md
@@ -75,21 +76,52 @@ scenario | owner | updated | summary`). A row is **promoted** to its own
 `TASK-xx.md` file once it needs a design doc, a long discussion, or multiple
 dated status notes (`md_sdlc promote <id> --to-file --story <story-id>`).
 
-## 5. Status vocabulary
+## 5. Review findings — multi-agent handoff
+
+When one agent (or person) designs/codes a Story and a second reviews it,
+findings go in `review.md`, a sibling to `tasks.md` using the same row-table
+convention — kept separate from `tasks.md` because a finding is feedback on
+work already done, not work that was planned.
+
+```
+| id | severity | status | summary | reported_by | updated |
+|----|----------|--------|---------|--------------|---------|
+| RVW-01 | critical | open | Race condition in retry logic | agent-2 | 2026-08-19 |
+```
+
+- **Reviewer** adds a finding: `md_sdlc review report --story <id> --summary "..." --severity <critical|high|medium|low> --reported-by <name>`
+- **Author** resolves it after fixing: `md_sdlc review resolve RVW-01 --story <id> --status <fixed|wontfix|changes-requested>`
+- Row status vocabulary is its own, separate from work-item status (§6):
+  `open → changes-requested → fixed` / `wontfix`. There is no "not-started" —
+  a finding exists because it was already found, not because it's queued.
+- The Story's own `status:` (§6) can be `in-review` while its `review.md` has
+  open rows — reviewing is a phase the Story sits in, findings are the
+  granular record of what's blocking it from `done`.
+- A finding is promotable the same way a task row is, if one needs a long
+  fix discussion rather than a one-line resolution (not yet automated by
+  `promote` — create the file by hand following the Task file shape in §1
+  if a finding grows beyond a row).
+
+## 6. Status vocabulary
 
 Two vocabularies, kept separate because the same word means different things
 for a unit of work versus a reference document.
 
 **Work-items:**
 ```
-proposed ─┬─→ not-started ─→ in-progress ─⇄ blocked ─→ done
+proposed ─┬─→ not-started ─→ in-progress ─→ in-review ─→ done
+          │                       ⇅              │
+          │                    blocked      (back to in-progress
+          │                                   if changes-requested)
           └─→ abandoned   (reachable from ANY state above)
 ```
 `blocked` is temporary (still owned, waiting on something, returns to
-`in-progress`). `abandoned` is terminal, reachable from any state — a
-rejected Proposal is simply `abandoned`, not a separate word. A promoted
-Proposal gets `status: done` (its job — leading to a decision — is finished),
-not a new "accepted" word; `promoted:`/`originated_from:` carry the lineage.
+`in-progress`). `in-review` means the author is done and a reviewer is
+looking (see §5 for the finding-level detail underneath this status).
+`abandoned` is terminal, reachable from any state — a rejected Proposal is
+simply `abandoned`, not a separate word. A promoted Proposal gets
+`status: done` (its job — leading to a decision — is finished), not a new
+"accepted" word; `promoted:`/`originated_from:` carry the lineage.
 
 **Artifacts:**
 ```
@@ -98,7 +130,7 @@ draft → approved / current → superseded
 
 **Terminal statuses** (only these are archivable): `done`, `abandoned`, `superseded`.
 
-## 6. Scenario tags
+## 7. Scenario tags
 
 `scenario:` distinguishes the kind of work independent of where it lives — a
 bug fix and a performance task are both `TASK-xx.md` in the same place;
@@ -108,18 +140,18 @@ bug fix and a performance task are both `TASK-xx.md` in the same place;
 `performance`, `docs`, `config`, `migration`, `hotfix`, `rollback`,
 `deprecation`, `compliance`, `dependency-upgrade`, `research`.
 
-## 7. Frontmatter schema
+## 8. Frontmatter schema
 
 ```yaml
 ---
 id: TASK-01-artifact-store-interface
 type: task                    # see §1
 kind: work-item                # see §3 - derived from type, don't set independently
-status: done                   # see §5, matching kind's vocabulary
+status: done                   # see §6, matching kind's vocabulary
 parent: STORY-01-payment-backend
 owner: YourName
 updated: 2026-08-18
-scenario: feature              # situational - see §6
+scenario: feature              # situational - see §7
 project: my_project             # situational - only once cross-project id collisions are possible
 mvp: true                      # situational - MVP scope marker for Epic/Story
 related: ADHOC-some-other-item        # situational - non-tree cross-reference
@@ -133,9 +165,10 @@ promoted: TASK-07-...            # situational - row-to-file promotion marker
 `validate` checks: `type` known, `status` valid for that type's `kind`,
 `id` matches filename and prefix matches `type`, and every
 `parent`/`related`/`originated_from`/`supersedes`/`reverts` resolves to a
-real id.
+real id. `review.md` rows are checked the same way against their own
+status vocabulary (§5).
 
-## 8. What the tool will never do
+## 9. What the tool will never do
 
 - Enforce writing quality — it validates that a field exists, not that the
   content is actually resumable by someone else later.
