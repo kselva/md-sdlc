@@ -8,11 +8,12 @@ same way `git` walks up looking for `.git/`. No plugin reads .sdlc/config.yml
 directly - they all go through resolve_project().
 """
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
+from core.vocab import DEFAULT_SMOKE_TEST_GLOB, DEFAULT_TEST_FILE_GLOBS
 from core.version import __version__
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,12 @@ class Project:
     project_prefix: str
     name: str
     marker_version: str | None = None  # tool version that ran `init`, if recorded
+    # 0.3.0 - resolved from optional .sdlc/config.yml keys. code_root is the
+    # tree that a Story's touches: globs resolve against (the code, not the
+    # ai-docs/ folder); defaults to the directory that contains ai-docs/.
+    code_root: Path | None = None
+    test_file_globs: list[str] = field(default_factory=lambda: list(DEFAULT_TEST_FILE_GLOBS))
+    smoke_test_glob: str = DEFAULT_SMOKE_TEST_GLOB
 
 
 def find_marker(start: Path | None = None) -> Path | None:
@@ -67,12 +74,24 @@ def resolve_project(start: Path | None = None) -> Project:
             f"after any tool upgrade to confirm nothing changed behavior"
         )
 
+    code_root_cfg = config.get("code_root")
+    if code_root_cfg:
+        code_root = (root.parent / code_root_cfg).resolve()
+    else:
+        code_root = root.parent
+
+    test_file_globs = config.get("test_file_globs") or list(DEFAULT_TEST_FILE_GLOBS)
+    smoke_test_glob = config.get("smoke_test_glob") or DEFAULT_SMOKE_TEST_GLOB
+
     logger.debug("Resolved project at %s", root)
     return Project(
         root=root,
         project_prefix=config.get("project_prefix", root.name.upper()),
         name=config.get("name", root.name),
         marker_version=marker_version,
+        code_root=code_root,
+        test_file_globs=test_file_globs,
+        smoke_test_glob=smoke_test_glob,
     )
 
 

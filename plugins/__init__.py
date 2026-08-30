@@ -34,6 +34,7 @@ _FROZEN_PLUGIN_MODULES = [
     "plugins.archive.plugin",
     "plugins.conventions.plugin",
     "plugins.review.plugin",
+    "plugins.handover.plugin",
 ]
 
 

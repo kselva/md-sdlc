@@ -12,7 +12,7 @@ from plugins.query.plugin import Command as QueryCommand
 def _args(**overrides):
     defaults = dict(
         type=None, status=None, owner=None, scenario=None, stale_days=None,
-        mvp_remaining=False, story=None, unresolved_reviews=False,
+        mvp_remaining=False, story=None, unresolved_reviews=False, active=False,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -61,3 +61,29 @@ def test_unresolved_reviews_unknown_story(repo, capsys):
 
     assert exc_info.value.code == 1
     assert "not a known story" in capsys.readouterr().out
+
+
+# -- 0.3.0 --active view ------------------------------------------------
+
+def test_active_lists_in_progress_stories_with_branch_and_touches(tmp_path, repo, capsys):
+    write_story(
+        tmp_path, story_id="STORY-01-calc", status="in-progress",
+        touches=["code/apps/api/src/salary/"],
+    )
+    write_story(tmp_path, story_id="STORY-02-done", status="done")
+
+    QueryCommand().run(repo, _args(active=True))
+
+    out = capsys.readouterr().out
+    assert "STORY-01-calc" in out
+    assert "feat/STORY-01-calc" in out
+    assert "code/apps/api/src/salary/" in out
+    assert "STORY-02-done" not in out
+
+
+def test_active_none(tmp_path, repo, capsys):
+    write_story(tmp_path, story_id="STORY-01-done", status="done")
+
+    QueryCommand().run(repo, _args(active=True))
+
+    assert "No active stories" in capsys.readouterr().out

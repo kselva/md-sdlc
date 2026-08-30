@@ -173,8 +173,50 @@ None of these are currently live bugs — listed so the *shape* of past
 mistakes (copy-paste gaps between similar code paths, frozen-vs-dev-mode
 divergence, encoding assumptions) is visible before making similar changes.
 
-## 10. Where things stand (as of 0.2.0, 2026-08-19)
+## 10. Why the stability gate (0.3.0)
 
+Real adoption (a payroll web app built largely by AI coding agents,
+against a customer who keeps changing behaviour until they see working
+output) slowed to a crawl on four things: tests written early and deep
+against unfrozen
+behaviour and thrown away weekly; full work-item ceremony for one-line
+tweaks; agents over-fed context (whole `requirements_raw.md` pasted in);
+and multiple agents silently editing the same files, surfacing only at the
+EPIC boundary. See `PROPOSAL-0.3.0-stability-gate-and-agent-handover.md`
+for the full write-up and the good/negative-case simulation.
+
+The fix is deliberately small and process-shaped, not a new engine:
+
+- `stability: exploring|settled|locked` gates test ceremony. The key
+  insight is that this is a *different axis* from `status` - "where in the
+  lifecycle" vs "has the customer frozen it" - so it had to be its own
+  field, not a new status value.
+- `validate`'s test-file check lists directory entries under a Story's
+  `touches:` globs and matches filenames - it never reads or executes a
+  test. This keeps `validate` a pure static walk, same as every other
+  rule it enforces.
+- `validate` findings gained an ERROR/WARNING split here. Overlap and
+  ceremony are human calls (sequencing two Stories, promoting a Task) -
+  worth surfacing, not worth failing a build over.
+- `touches:` is advisory and never filesystem-checked, on purpose - a
+  Story legitimately creates new paths, and the honest limit is "only as
+  good as who fills it in" (same class as §8's "can't enforce writing
+  quality").
+- `handover` is the anti-over-feeding move: one Story's pack, no siblings,
+  no parent EPIC body, no `requirements_raw.md`.
+
+`handover` is **plugin #9** - the DESIGN_NOTES §7 two-place frozen-list
+trap was navigated: it is in both `plugins/__init__.py`
+`_FROZEN_PLUGIN_MODULES` and `md_sdlc.spec` `hiddenimports`, and
+`plugins/init/templates/` was added to `md_sdlc.spec` `datas` for the
+`AI-RULES.md` template (same static-analysis-blindness reason as the
+`new` templates).
+
+## 11. Where things stand (as of 0.3.0, 2026-08-30)
+
+- 0.3.0 adds the stability gate, `handover`, and `touches:` collision
+  guards (§10). The adopting project's own migration steps are in the
+  proposal's §6.
 - Real adoption: one project's `ai-docs/` tree has 30 real Epics tracked,
   `validate` passes clean.
 - Public repo: `github.com/kselva/md-sdlc`, description/topics set.

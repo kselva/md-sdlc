@@ -159,16 +159,103 @@ originated_from: PROPOSAL-xx    # situational - spawning lineage (proposal -> ep
 supersedes: TASK-04-old-approach # situational - change-request lineage
 reverts: TASK-09-broken-change  # situational - rollback lineage
 promoted: TASK-07-...            # situational - row-to-file promotion marker
+stability: exploring            # situational (epic/story) - see §10
+touches:                        # situational (story) - see §10
+  - code/apps/api/src/salary/cycles/
+  - code/packages/types/src/salary-cycle.ts
 ---
 ```
 
 `validate` checks: `type` known, `status` valid for that type's `kind`,
-`id` matches filename and prefix matches `type`, and every
+`stability` (if set) is one of `exploring`/`settled`/`locked`, `id`
+matches filename and prefix matches `type`, and every
 `parent`/`related`/`originated_from`/`supersedes`/`reverts` resolves to a
 real id. `review.md` rows are checked the same way against their own
-status vocabulary (§5).
+status vocabulary (§5). `touches:` is **not** checked against the
+filesystem - a Story may legitimately create new paths.
 
-## 9. What the tool will never do
+## 9. `.sdlc/config.yml` keys
+
+Created by `init`, walked up to like `.git/`. Never hand-edit `name` /
+`project_prefix` / `tool_version`. Optional keys a project may add:
+
+```yaml
+code_root: ../                       # tree that touches: globs resolve against
+                                     #   (default: the folder containing ai-docs/)
+test_file_globs:                     # filenames validate's test gate treats as
+  - "*.spec.ts"                      #   assertion/spec tests (defaults shipped)
+  - "*.test.ts"
+  - "*_test.py"
+smoke_test_glob: "*.smoke.spec.ts"   # the ONE test an `exploring` Story may have
+```
+
+## 10. Stability and the test gate
+
+`stability:` is a situational field on `epic` and `story`. It is **not** a
+status - `status` is where the item sits in its lifecycle, `stability` is
+whether the customer has frozen the behaviour yet. It exists because
+writing deep tests against behaviour the customer is still changing means
+throwing that test work away on every change.
+
+| Value | Meaning | Docs | Tests allowed |
+|---|---|---|---|
+| `exploring` | customer still deciding behaviour | one-paragraph note / spec | smoke test only |
+| `settled` | customer signed off on behaviour | short frozen spec | assertion / golden-file tests |
+| `locked` | shipped, in user testing | spec frozen | tests frozen |
+
+**Ceremony limits while `exploring`** (a Story marked `exploring` is meant
+to be cheap to iterate):
+
+- Skip `TASK-xx.md` files - keep tasks as rows in `tasks.md`. `validate`
+  WARNS on a promoted Task file under an `exploring` Story.
+- Skip assertion tests - one smoke test only (output parses, count > 0).
+  `validate` ERRORS if a file matching `test_file_globs` (see §9) exists
+  under the Story's `touches:` paths; a single `smoke_test_glob` match is
+  exempt. This check lists directory entries only - it never reads or runs
+  a test.
+- Don't ship it. `validate` WARNS on `status: done` while `exploring`, and
+  the project rule is "no Story enters user testing while `exploring`".
+
+**`touches:`** is an advisory list of repo-relative path globs a Story
+expects to edit, resolved against `code_root` (§9). Its jobs:
+
+- `validate` emits a WARNING when two Stories that are both
+  `in-progress` / `in-review` have overlapping `touches:` prefixes - a
+  prompt to sequence them, never an error.
+- `md_sdlc query --active` lists every active Story with its branch and
+  `touches:` - run it before handing out a new Story to check for overlap
+  by eye.
+- `md_sdlc handover <story-id>` prints the `touches:` list into the agent
+  pack as "edit only these".
+
+`touches:` is only as honest as the person who fills it in - the tool does
+not and will not verify it against the filesystem.
+
+## 11. Sample-data / golden-file development
+
+For a feature whose behaviour the customer has not frozen, verifying
+against a real data sample + a hand-checked expected-output file beats
+writing an assertion spec that gets rewritten weekly.
+
+- Fixtures live in `ai-docs/samples/` (sibling to `hist/`) **or** in the
+  host repo's own test tree, `related:`-linked from the Story.
+- Every fixture carries `pulled_on:` and `source:` metadata.
+- While the Story is `exploring`, the expected-output file is **editable**
+  and is the working reference (diff + eyeball). When the Story goes
+  `settled`, that file is **frozen** and one thin test asserts the calc
+  output deep-equals it.
+- Production data must be anonymised **at pull time** - never store
+  un-anonymised customer data in the repo.
+
+## 12. AI agent behavioural contract
+
+`ai-docs/AI-RULES.md` (one per project, ~30 lines, behaviour rules only -
+project *facts* stay in the host's own `CLAUDE.md` / rules file) is created
+by `md_sdlc init` from a shipped template. `md_sdlc handover` prepends it
+to every context pack, so no agent is handed work without it. Edit it for
+your project; keep it short.
+
+## 13. What the tool will never do
 
 - Enforce writing quality — it validates that a field exists, not that the
   content is actually resumable by someone else later.
