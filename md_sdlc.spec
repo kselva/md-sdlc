@@ -17,6 +17,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('plugins/new/templates', 'plugins/new/templates'),
+        ('plugins/init/templates', 'plugins/init/templates'),
         ('CONVENTIONS.md', '.'),
     ],
     hiddenimports=[
@@ -29,6 +30,7 @@ a = Analysis(
         'plugins.archive.plugin',
         'plugins.conventions.plugin',
         'plugins.review.plugin',
+        'plugins.handover.plugin',
     ],
     hookspath=[],
     hooksconfig={},

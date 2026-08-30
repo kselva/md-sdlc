@@ -31,6 +31,12 @@ class WorkItemFile:
     supersedes: str | None = None
     reverts: str | None = None
     promoted: str | None = None
+    # 0.3.0 situational fields (epic/story). stability gates test ceremony
+    # (see core.vocab.STABILITY_VALUES); touches is an advisory list of
+    # repo-relative path globs the Story expects to edit, used by validate's
+    # overlap warning and by `handover` - never checked against the filesystem.
+    stability: str | None = None
+    touches: list[str] = field(default_factory=list)
     extra: dict = field(default_factory=dict)
     body: str = ""
 

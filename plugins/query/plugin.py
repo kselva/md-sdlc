@@ -27,10 +27,18 @@ class Command(BaseCommand):
             "--unresolved-reviews", action="store_true",
             help="List review.md rows for --story with status open or changes-requested",
         )
+        parser.add_argument(
+            "--active", action="store_true",
+            help="List in-progress / in-review Stories with branch + touches globs (collision check)",
+        )
 
     def run(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
         if args.unresolved_reviews:
             self._unresolved_reviews(repo, args)
+            return
+
+        if args.active:
+            self._active_stories(repo)
             return
 
         items = repo.all_files()
@@ -66,6 +74,25 @@ class Command(BaseCommand):
             return datetime.date.fromisoformat(value)
         except (ValueError, TypeError):
             return None
+
+    def _active_stories(self, repo: AiDocsRepo) -> None:
+        """One line per in-progress / in-review Story: id | owner | branch |
+        touches globs. Run before handing out a new Story to eyeball overlap
+        (PROPOSAL-0.3.0 section 3.3)."""
+        stories = [
+            i for i in repo.all_files()
+            if i.type == "story" and i.status in ("in-progress", "in-review")
+        ]
+        if not stories:
+            print("No active stories (none in-progress or in-review).")
+            return
+
+        print(f"{len(stories)} active story(ies):\n")
+        print("| ID | Owner | Branch | Touches |")
+        print("|---|---|---|---|")
+        for s in sorted(stories, key=lambda x: x.id):
+            touches = "; ".join(s.touches) if s.touches else "-"
+            print(f"| {s.id} | {s.owner or '-'} | feat/{s.id} | {touches} |")
 
     def _unresolved_reviews(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
         if not args.story:

@@ -18,6 +18,24 @@ ARTIFACT_STATUSES = {"draft", "approved", "current", "superseded"}
 # in the work-item flow.
 REVIEW_ROW_STATUSES = {"open", "changes-requested", "fixed", "wontfix"}
 
+# Stability (0.3.0) - a situational field on epic/story that gates how much
+# test ceremony is allowed. Separate from status: status is "where is this in
+# its lifecycle", stability is "has the customer frozen the behaviour yet".
+#   exploring - customer still deciding; smoke test only, skip Task files/review
+#   settled   - customer signed off; assertion / golden-file tests allowed
+#   locked    - shipped, in user testing; spec and tests frozen
+STABILITY_VALUES = {"exploring", "settled", "locked"}
+
+# Filenames matching these globs are treated as assertion/spec tests by
+# validate's test gate (a project overrides via .sdlc/config.yml
+# test_file_globs). A single file matching smoke_test_glob is exempt - the
+# one smoke test an `exploring` Story is allowed.
+DEFAULT_TEST_FILE_GLOBS = [
+    "*.spec.ts", "*.test.ts", "*.spec.js", "*.test.js",
+    "*_test.py", "test_*.py",
+]
+DEFAULT_SMOKE_TEST_GLOB = "*.smoke.spec.ts"
+
 # type -> kind is a fixed lookup, not an independently-set field. This removes
 # an entire class of validation error (kind disagreeing with type) by construction.
 TYPE_KIND = {
@@ -87,6 +105,10 @@ def is_valid_status(type_: str, status: str) -> bool:
 
 def is_valid_review_status(status: str) -> bool:
     return status in REVIEW_ROW_STATUSES
+
+
+def is_valid_stability(value: str) -> bool:
+    return value in STABILITY_VALUES
 
 
 def prefix_for_type(type_: str) -> str | None:

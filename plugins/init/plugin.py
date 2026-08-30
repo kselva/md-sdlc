@@ -13,6 +13,16 @@ from pathlib import Path
 from core.profile import init_marker
 from plugins.base_plugin import BaseCommand
 
+_TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+
+def _ai_rules_template() -> str:
+    if getattr(sys, "frozen", False):
+        path = Path(sys._MEIPASS) / "plugins" / "init" / "templates" / "AI-RULES.md"
+    else:
+        path = _TEMPLATES_DIR / "AI-RULES.md"
+    return path.read_text(encoding="utf-8")
+
 
 class Command(BaseCommand):
     name = "init"
@@ -35,7 +45,17 @@ class Command(BaseCommand):
 
         (target / "hist").mkdir(exist_ok=True)
 
+        rules_path = target / "AI-RULES.md"
+        rules_created = False
+        if not rules_path.exists():
+            rules_path.write_text(_ai_rules_template(), encoding="utf-8")
+            rules_created = True
+
         print(f"Initialized '{args.name}' ({args.prefix}) at {target}")
         print(f"  marker: {config_path.relative_to(target)}")
         print(f"  created: hist/")
+        if rules_created:
+            print(f"  created: AI-RULES.md  (edit for your project - ~30 lines, behaviour rules only)")
+        else:
+            print(f"  kept: AI-RULES.md  (already present)")
         print(f"Run 'python sdlc_tool.py new proposal --title \"...\"' to get started.")

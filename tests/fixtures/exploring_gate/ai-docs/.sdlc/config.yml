@@ -1,0 +1,5 @@
+name: Exploring Gate Fixture
+project_prefix: EXGATE
+# code_root is resolved against the folder that contains ai-docs/ - here
+# "." means that folder itself (exploring_gate/), where code/ lives.
+code_root: "."

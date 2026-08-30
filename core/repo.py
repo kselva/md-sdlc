@@ -17,7 +17,23 @@ logger = logging.getLogger(__name__)
 _KNOWN_FIELDS = {
     "id", "type", "kind", "status", "parent", "owner", "updated", "scenario",
     "project", "mvp", "related", "originated_from", "supersedes", "reverts", "promoted",
+    "stability", "touches",
 }
+
+
+def _as_str_list(value) -> list[str]:
+    """Coerce a frontmatter value to a list of strings.
+
+    touches: may be authored as a YAML list or, for a single path, a bare
+    string - accept both so a one-path Story isn't forced into list syntax.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return []
 
 
 class AiDocsRepo:
@@ -67,6 +83,8 @@ class AiDocsRepo:
             supersedes=meta.get("supersedes"),
             reverts=meta.get("reverts"),
             promoted=meta.get("promoted"),
+            stability=meta.get("stability"),
+            touches=_as_str_list(meta.get("touches")),
             extra=extra,
             body=body,
         )
