@@ -8,15 +8,20 @@ type/status/kind values is fixed so validation has a stable contract.
 Source: ai-docs/plan/SDLC_Tracking_System_Design.md, sections 4, 6, 8.
 """
 
-WORK_ITEM_STATUSES = {"proposed", "not-started", "in-progress", "in-review", "blocked", "done", "abandoned"}
-ARTIFACT_STATUSES = {"draft", "approved", "current", "superseded"}
+# Lifecycle order - used for column layout in `stats` and any other ordered
+# rendering. The set form below is kept for O(1) membership checks.
+WORK_ITEM_STATUS_ORDER = ("proposed", "not-started", "in-progress", "in-review", "blocked", "done", "abandoned")
+WORK_ITEM_STATUSES = set(WORK_ITEM_STATUS_ORDER)
+ARTIFACT_STATUS_ORDER = ("draft", "approved", "current", "superseded")
+ARTIFACT_STATUSES = set(ARTIFACT_STATUS_ORDER)
 
 # Review-row-specific vocabulary (review.md rows, see REVIEW_ROW_COLUMNS) -
 # separate from WORK_ITEM_STATUSES because a finding isn't a unit of planned
 # work: it has no "not-started" (it exists because it was already found) and
 # "changes-requested" sends it back to the author, which has no equivalent
 # in the work-item flow.
-REVIEW_ROW_STATUSES = {"open", "changes-requested", "fixed", "wontfix"}
+REVIEW_ROW_STATUS_ORDER = ("open", "changes-requested", "fixed", "wontfix")
+REVIEW_ROW_STATUSES = set(REVIEW_ROW_STATUS_ORDER)
 
 # Stability (0.3.0) - a situational field on epic/story that gates how much
 # test ceremony is allowed. Separate from status: status is "where is this in
@@ -24,7 +29,8 @@ REVIEW_ROW_STATUSES = {"open", "changes-requested", "fixed", "wontfix"}
 #   exploring - customer still deciding; smoke test only, skip Task files/review
 #   settled   - customer signed off; assertion / golden-file tests allowed
 #   locked    - shipped, in user testing; spec and tests frozen
-STABILITY_VALUES = {"exploring", "settled", "locked"}
+STABILITY_ORDER = ("exploring", "settled", "locked")
+STABILITY_VALUES = set(STABILITY_ORDER)
 
 # Filenames matching these globs are treated as assertion/spec tests by
 # validate's test gate (a project overrides via .sdlc/config.yml
@@ -74,7 +80,8 @@ SCENARIOS = {
 
 TASK_ROW_COLUMNS = ["id", "status", "scenario", "owner", "updated", "summary"]
 REVIEW_ROW_COLUMNS = ["id", "severity", "status", "summary", "reported_by", "updated"]
-REVIEW_SEVERITIES = {"critical", "high", "medium", "low"}
+REVIEW_SEVERITY_ORDER = ("critical", "high", "medium", "low")
+REVIEW_SEVERITIES = set(REVIEW_SEVERITY_ORDER)
 
 
 def slugify(title: str) -> str:

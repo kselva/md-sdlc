@@ -260,7 +260,7 @@ your project; keep it short.
 - Enforce writing quality — it validates that a field exists, not that the
   content is actually resumable by someone else later.
 - Provide arbitrary querying (no joins/aggregations) — `query`'s filter
-  flags are the ceiling.
+  flags and `stats`' status matrix / grouped counts are the ceiling.
 - Sync automatically with real Jira/ADO (not built; the plugin architecture
   leaves room for it later).
 - Migrate old, pre-existing docs into this convention automatically.

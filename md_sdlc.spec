@@ -31,6 +31,7 @@ a = Analysis(
         'plugins.conventions.plugin',
         'plugins.review.plugin',
         'plugins.handover.plugin',
+        'plugins.stats.plugin',
     ],
     hookspath=[],
     hooksconfig={},

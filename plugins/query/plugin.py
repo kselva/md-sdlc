@@ -22,10 +22,10 @@ class Command(BaseCommand):
         parser.add_argument("--scenario", default=None)
         parser.add_argument("--stale-days", type=int, default=None, help="Only items not updated in N+ days")
         parser.add_argument("--mvp-remaining", action="store_true", help="Shorthand: type=epic, mvp=true, status!=done")
-        parser.add_argument("--story", default=None, help="Story id to scope --unresolved-reviews to")
+        parser.add_argument("--story", default=None, help="Story id to scope --unresolved-reviews to (omit for a project-wide sweep)")
         parser.add_argument(
             "--unresolved-reviews", action="store_true",
-            help="List review.md rows for --story with status open or changes-requested",
+            help="List open / changes-requested review.md findings - for one --story, or project-wide if --story is omitted",
         )
         parser.add_argument(
             "--active", action="store_true",
@@ -94,24 +94,55 @@ class Command(BaseCommand):
             touches = "; ".join(s.touches) if s.touches else "-"
             print(f"| {s.id} | {s.owner or '-'} | feat/{s.id} | {touches} |")
 
+    _UNRESOLVED = ("open", "changes-requested")
+
     def _unresolved_reviews(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
-        if not args.story:
-            print("ERROR: --unresolved-reviews requires --story <id>")
-            sys.exit(1)
+        if args.story:
+            self._unresolved_reviews_one(repo, args.story)
+        else:
+            self._unresolved_reviews_all(repo)
 
-        story = repo.find(args.story)
+    def _unresolved_reviews_one(self, repo: AiDocsRepo, story_id: str) -> None:
+        story = repo.find(story_id)
         if story is None or story.type != "story":
-            print(f"ERROR: '{args.story}' is not a known story")
+            print(f"ERROR: '{story_id}' is not a known story")
             sys.exit(1)
 
-        rows = [r for r in repo.review_rows(args.story) if r.status in ("open", "changes-requested")]
+        rows = [r for r in repo.review_rows(story_id) if r.status in self._UNRESOLVED]
 
         if not rows:
-            print(f"No unresolved review findings for {args.story}.")
+            print(f"No unresolved review findings for {story_id}.")
             return
 
-        print(f"{len(rows)} unresolved finding(s) on {args.story}:\n")
+        print(f"{len(rows)} unresolved finding(s) on {story_id}:\n")
         print("| id | severity | status | summary | reported_by | updated |")
         print("|----|----------|--------|---------|--------------|---------|")
         for r in rows:
             print(f"| {r.id} | {r.severity or '-'} | {r.status} | {r.summary} | {r.reported_by or '-'} | {r.updated or '-'} |")
+
+    def _unresolved_reviews_all(self, repo: AiDocsRepo) -> None:
+        """Project-wide sweep: every Story's review.md, open / changes-requested
+        findings only, one table with a story column."""
+        stories = sorted(
+            (i for i in repo.all_files() if i.type == "story"),
+            key=lambda s: s.id,
+        )
+        hits: list[tuple[str, object]] = []
+        for story in stories:
+            for r in repo.review_rows(story.id):
+                if r.status in self._UNRESOLVED:
+                    hits.append((story.id, r))
+
+        if not hits:
+            print("No unresolved review findings in the project.")
+            return
+
+        n_stories = len({sid for sid, _ in hits})
+        print(f"{len(hits)} unresolved finding(s) across {n_stories} story(ies):\n")
+        print("| story | id | severity | status | summary | reported_by | updated |")
+        print("|-------|----|----------|--------|---------|--------------|---------|")
+        for sid, r in hits:
+            print(
+                f"| {sid} | {r.id} | {r.severity or '-'} | {r.status} | {r.summary} | "
+                f"{r.reported_by or '-'} | {r.updated or '-'} |"
+            )

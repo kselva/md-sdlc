@@ -129,6 +129,20 @@ questions, without opening files by hand.
 md_sdlc query --type task --status in-progress
 md_sdlc query --owner YourName --stale-days 14
 md_sdlc query --mvp-remaining
+md_sdlc query --active                       # in-progress / in-review Stories + branch + touches
+md_sdlc query --unresolved-reviews           # every open finding in the project (one table)
+md_sdlc query --unresolved-reviews --story STORY-01-first-slice   # scoped to one Story
+```
+
+### stats
+
+Status statistics — the spread, not just a single filtered list.
+
+```bash
+md_sdlc stats                                # project-wide type x status matrix + stability + open findings
+md_sdlc stats --epic EPIC-01-checkout-redesign   # one Epic: its Stories and Tasks broken down
+md_sdlc stats --by owner                     # counts grouped by owner (or: stability, scenario)
+md_sdlc stats --json                         # same numbers as JSON, for scripting
 ```
 
 ### new
@@ -184,6 +198,19 @@ changes-requested -> fixed/wontfix), separate from task/story status — see
 `CONVENTIONS.md` §5. The Story's own status can be `in-review` while its
 `review.md` still has open rows.
 
+### handover
+
+Print a self-contained context pack for one Story — branch name, the
+project's `AI-RULES.md`, the Story body, its open task rows, its `touches:`
+list, linked artifacts, and open review findings — for pasting into an AI
+coding agent. Only that Story: no siblings, no parent Epic body.
+
+```bash
+md_sdlc handover STORY-01-first-slice
+md_sdlc handover STORY-01-first-slice --full     # also inline linked artifact bodies
+md_sdlc handover STORY-01-first-slice --strict   # refuse if `validate` currently fails
+```
+
 ### archive
 
 Move a terminal-status item to `hist/`. Refuses on any non-terminal status —
@@ -219,7 +246,8 @@ md-sdlc/
     repo.py                         # AiDocsRepo - the only filesystem touchpoint
   plugins/
     base_plugin.py                # BaseCommand(ABC)
-    validate/ backlog/ query/ new/ promote/ archive/ init/ review/ conventions/
+    validate/ backlog/ query/ stats/ new/ promote/ archive/ init/ review/
+    conventions/ handover/
   tests/
     fixtures/                     # committed regression fixtures, incl. one
                                    # deliberate broken-link violation for validate

@@ -29,6 +29,14 @@ effect is a *lighter* process.
 - New `query --active` — one line per in-progress / in-review Story with
   branch and `touches:` globs, for eyeballing collisions before handing
   out new work.
+- New `stats` command — status statistics without opening every file:
+  `stats` (project-wide type × status matrix, plus a `stability` tally and
+  an open-findings-by-severity line), `stats --epic <id>` (one Epic's
+  Stories and Tasks broken down, plus a per-Story table), `stats --by
+  owner|stability|scenario` (counts grouped by that field), `stats --json`.
+- `query --unresolved-reviews` no longer requires `--story` — omit it for a
+  project-wide sweep of every Story's open / changes-requested findings in
+  one table.
 - `init` now ships an `AI-RULES.md` template and writes it to the project
   root (~30-line behavioural contract, one per project).
 - `.sdlc/config.yml` gains optional keys: `code_root`, `test_file_globs`,
