@@ -116,7 +116,8 @@ proposed ─┬─→ not-started ─→ in-progress ─→ in-review ─→ don
           └─→ abandoned   (reachable from ANY state above)
 ```
 `blocked` is temporary (still owned, waiting on something, returns to
-`in-progress`). `in-review` means the author is done and a reviewer is
+`in-progress`). `parked` (0.4.0) is put aside on purpose: not terminal, it can come
+back, and `status` lists it in its own section. `in-review` means the author is done and a reviewer is
 looking (see §5 for the finding-level detail underneath this status).
 `abandoned` is terminal, reachable from any state — a rejected Proposal is
 simply `abandoned`, not a separate word. A promoted Proposal gets
@@ -138,7 +139,8 @@ bug fix and a performance task are both `TASK-xx.md` in the same place;
 
 `feature`, `enhancement`, `bug`, `refactor`, `spike`, `change-request`,
 `performance`, `docs`, `config`, `migration`, `hotfix`, `rollback`,
-`deprecation`, `compliance`, `dependency-upgrade`, `research`.
+`deprecation`, `compliance`, `dependency-upgrade`, `research`, `poc`,
+`quality`.
 
 ## 8. Frontmatter schema
 
@@ -163,6 +165,14 @@ stability: exploring            # situational (epic/story) - see §10
 touches:                        # situational (story) - see §10
   - code/apps/api/src/salary/cycles/
   - code/packages/types/src/salary-cycle.ts
+title: Full name of the item    # 0.4.0 situational - names stay short, the title stays full
+next: one line                 # 0.4.0 - what happens next, shown in status
+waits_on: owner                # 0.4.0 - who/what it waits on; decision_waits word = owner decision
+deployed: release-4 2026-10-25 # 0.4.0 - what is live and since when ("On site" in status)
+question: Does X hold?         # 0.4.0 experiment - the one question
+result: X held at 97%          # 0.4.0 experiment - one line
+verdict: yes                   # 0.4.0 experiment - open / yes / no / partly
+adopted: 2026-10-26            # 0.4.0 - set by `adopt`; the file kept its old name
 ---
 ```
 
@@ -187,6 +197,10 @@ test_file_globs:                     # filenames validate's test gate treats as
   - "*.test.ts"
   - "*_test.py"
 smoke_test_glob: "*.smoke.spec.ts"   # the ONE test an `exploring` Story may have
+id_style: short                      # 0.4.0 - classic (default) or short, see §14
+work_dir: plan                       # 0.4.0 - where new items go (default: root)
+decision_waits: owner                # 0.4.0 - waits_on word meaning "owner must decide"
+stale_days: 14                       # 0.4.0 - "not touched" threshold in status
 ```
 
 ## 10. Stability and the test gate
@@ -260,7 +274,49 @@ your project; keep it short.
 - Enforce writing quality — it validates that a field exists, not that the
   content is actually resumable by someone else later.
 - Provide arbitrary querying (no joins/aggregations) — `query`'s filter
-  flags are the ceiling.
+  flags and `stats`' status matrix / grouped counts are the ceiling.
 - Sync automatically with real Jira/ADO (not built; the plugin architecture
   leaves room for it later).
 - Migrate old, pre-existing docs into this convention automatically.
+
+## 14. Short layout (0.4.0, `id_style: short`)
+
+Opt-in per project. Names stay short, open items are rows, and the whole
+status comes from one command. Classic projects are unchanged.
+
+**Ids and paths** (`work_dir: plan`):
+
+| Item | Id | Path |
+|---|---|---|
+| Epic (track) | code you pick: `PAY1` | `plan/PAY1-checkout/epic.md` |
+| Story (step) | `PAY1-A` (`--code A`) or `PAY1-1` | `plan/PAY1-checkout/PAY1-A-card-form/story.md` |
+| Open item | `PAY1-A.3` | row in that folder's `tasks.md` |
+| Experiment | `PAY1-E2` / `EXP-<slug>` | `PAY1-E2-<slug>.md` in the parent folder / `plan/` |
+| Idea | `IDEA-<slug>` | `plan/ideas/` |
+| Ad hoc | `ADHOC-<slug>` | `plan/` |
+
+Name = id + up to 3 words; the full name goes in `title:`.
+
+**An item folder holds:** `epic.md`/`story.md` (plan + header), `tasks.md`
+(rows: `id | status | waits | verdict | updated | summary`), `log.md`
+(dated notes, newest first). Any other file is "attached" to the item.
+
+**Rules `validate` enforces.** ERROR: a loose `.md` under `work_dir` (adopt
+it or move it; `README.md` and `backlog.md` are allowed), a duplicate id, a
+story id not starting with its epic id, a name not starting with its id
+(unless `adopted:`), unknown words, links that do not resolve. WARNING: a
+name over 40 characters, an open epic/story with no `next:`.
+
+**Upkeep is commands, not hand edits:**
+```bash
+md_sdlc set PAY1-A --status in-review --next "field check" --waits-on site
+md_sdlc item add PAY1-A "check postcode field" [--waits site] [--experiment]
+md_sdlc item set PAY1-A.3 done [--verdict yes --result "kept 2 s"]
+md_sdlc log PAY1 "kickoff done"
+md_sdlc set PAY1 --deployed "release-4 2026-10-25"
+md_sdlc status            # or: status PAY1, status --json
+```
+
+**Experiments:** a quick one is a row with a verdict (`item add --experiment`);
+one that needs a method and a write-up is a file (`new experiment --question`).
+A POC is an epic with `scenario: poc` and its experiments under it.

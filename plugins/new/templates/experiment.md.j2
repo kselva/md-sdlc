@@ -1,0 +1,23 @@
+---
+id: {{ id }}
+type: experiment
+kind: work-item
+status: not-started
+{%- if parent %}
+parent: {{ parent }}
+{%- endif %}
+owner: {{ owner }}
+updated: {{ updated }}
+scenario: {{ scenario }}
+question: {{ question | tojson }}
+verdict: open
+---
+
+# {{ title }}
+
+## Question
+{{ question }}
+
+## Method
+
+## Result

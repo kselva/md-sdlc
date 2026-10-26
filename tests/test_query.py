@@ -47,12 +47,33 @@ def test_unresolved_reviews_none_left(tmp_path, repo, capsys):
     assert "No unresolved review findings" in out
 
 
-def test_unresolved_reviews_requires_story(repo, capsys):
-    with pytest.raises(SystemExit) as exc_info:
-        QueryCommand().run(repo, _args(unresolved_reviews=True, story=None))
+def test_unresolved_reviews_project_wide_sweeps_all_stories(tmp_path, repo, capsys):
+    s1 = write_story(tmp_path, story_id="STORY-01-a")
+    s2 = write_story(tmp_path, story_id="STORY-02-b")
+    write_story(tmp_path, story_id="STORY-03-clean")
+    write_review_md(s1, [
+        ("RVW-01", "critical", "open", "Bug A", "agent-2", "2026-08-30"),
+        ("RVW-02", "low", "fixed", "Nit", "agent-2", "2026-08-30"),
+    ])
+    write_review_md(s2, [
+        ("RVW-01", "medium", "changes-requested", "Bug B", "agent-3", "2026-08-30"),
+    ])
 
-    assert exc_info.value.code == 1
-    assert "requires --story" in capsys.readouterr().out
+    QueryCommand().run(repo, _args(unresolved_reviews=True, story=None))
+
+    out = capsys.readouterr().out
+    assert "2 unresolved finding(s) across 2 story(ies)" in out
+    assert "STORY-01-a" in out and "STORY-02-b" in out
+    assert "STORY-03-clean" not in out
+    assert "Nit" not in out  # fixed finding excluded
+
+
+def test_unresolved_reviews_project_wide_none(tmp_path, repo, capsys):
+    write_story(tmp_path, story_id="STORY-01-a")
+
+    QueryCommand().run(repo, _args(unresolved_reviews=True, story=None))
+
+    assert "No unresolved review findings in the project." in capsys.readouterr().out
 
 
 def test_unresolved_reviews_unknown_story(repo, capsys):

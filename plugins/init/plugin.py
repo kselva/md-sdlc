@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from core.profile import init_marker
+from core.vocab import ID_STYLE_CLASSIC, ID_STYLE_SHORT
 from plugins.base_plugin import BaseCommand
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -32,18 +33,23 @@ class Command(BaseCommand):
         parser.add_argument("--name", required=True, help="Human-readable project name")
         parser.add_argument("--prefix", required=True, help="Short project prefix, e.g. STO, used for future cross-project disambiguation")
         parser.add_argument("--path", default=".", help="Folder to initialize (default: current directory)")
+        parser.add_argument("--id-style", choices=[ID_STYLE_CLASSIC, ID_STYLE_SHORT], default=ID_STYLE_CLASSIC,
+                            help="short = short ids and paths, open items as rows (see CONVENTIONS 'Short layout')")
+        parser.add_argument("--work-dir", default="", help="Folder for new items, e.g. plan (default: project root)")
 
     def run(self, repo, args: argparse.Namespace) -> None:
         target = Path(args.path).resolve()
         target.mkdir(parents=True, exist_ok=True)
 
         try:
-            config_path = init_marker(target, args.name, args.prefix)
+            config_path = init_marker(target, args.name, args.prefix, args.id_style, args.work_dir)
         except FileExistsError as exc:
             print(f"ERROR: {exc}")
             sys.exit(1)
 
         (target / "hist").mkdir(exist_ok=True)
+        if args.work_dir:
+            (target / args.work_dir).mkdir(parents=True, exist_ok=True)
 
         rules_path = target / "AI-RULES.md"
         rules_created = False
@@ -54,6 +60,8 @@ class Command(BaseCommand):
         print(f"Initialized '{args.name}' ({args.prefix}) at {target}")
         print(f"  marker: {config_path.relative_to(target)}")
         print(f"  created: hist/")
+        if args.work_dir:
+            print(f"  created: {args.work_dir}/  (id style: {args.id_style})")
         if rules_created:
             print(f"  created: AI-RULES.md  (edit for your project - ~30 lines, behaviour rules only)")
         else:

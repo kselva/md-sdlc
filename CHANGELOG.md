@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 — 2026-10-26
+
+Short layout, one-screen status, experiments, and upkeep commands. Driven by
+the first adopter dropping the tool (long paths, unused `tasks.md`, hand
+edits) - see `PROPOSAL-0.4.0-short-layout-status-and-experiments.md`.
+Classic projects keep working unchanged (the 35 existing tests pass as is).
+
+- New opt-in `id_style: short` with `work_dir`, `decision_waits`,
+  `stale_days` in `.sdlc/config.yml`; `init --id-style --work-dir`.
+  Short ids (`PAY1`, `PAY1-A`, `PAY1-A.3`, `PAY1-E2`, `IDEA-x`) and names of
+  id + up to 3 words. CONVENTIONS §14.
+- New commands: `status [ID] [--json]`, `set`, `item add|set`, `log`, `adopt`.
+- New status `parked` (not terminal), type `experiment`, scenarios `poc` and
+  `quality`, header fields `title`, `next`, `waits_on`, `deployed`,
+  `question`, `result`, `verdict`, `adopted`.
+- `core/overview.py`: status as plain data; terminal text, `backlog.md`
+  (short layout) and `--json` all render it - the seam for a later UI.
+- `validate`: duplicate ids and unknown verdicts are errors (both layouts);
+  short-layout rules (loose files, id/name agreement, story under its epic;
+  warnings for long names and open items without `next`).
+- `new`: short ids/paths, `--code`, `new experiment --question`; epic/story
+  get `tasks.md` + `log.md`; `new task` points to `item add` in short layout.
+- `promote --to-epic` keeps every Proposal header field; `--code` in short layout.
+- Fixes: the parsed tree is cached (status on 2,000 files well under 2 s
+  once files are on disk); header writes keep key order; row tables are read
+  by header name and allow `\|` in a cell; `archive` refreshes the cache.
+
 ## 0.3.0 — 2026-08-30
 
 Stability gate, agent handover pack, and collision guards. Driven by real
@@ -29,6 +56,14 @@ effect is a *lighter* process.
 - New `query --active` — one line per in-progress / in-review Story with
   branch and `touches:` globs, for eyeballing collisions before handing
   out new work.
+- New `stats` command — status statistics without opening every file:
+  `stats` (project-wide type × status matrix, plus a `stability` tally and
+  an open-findings-by-severity line), `stats --epic <id>` (one Epic's
+  Stories and Tasks broken down, plus a per-Story table), `stats --by
+  owner|stability|scenario` (counts grouped by that field), `stats --json`.
+- `query --unresolved-reviews` no longer requires `--story` — omit it for a
+  project-wide sweep of every Story's open / changes-requested findings in
+  one table.
 - `init` now ships an `AI-RULES.md` template and writes it to the project
   root (~30-line behavioural contract, one per project).
 - `.sdlc/config.yml` gains optional keys: `code_root`, `test_file_globs`,

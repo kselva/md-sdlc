@@ -90,6 +90,7 @@ or keep in sync.
 
 ```bash
 md_sdlc init --name "Project Name" --prefix ABC [--path .]
+md_sdlc init --name "Project Name" --prefix ABC --id-style short --work-dir plan   # 0.4.0 short layout
 ```
 
 ### conventions
@@ -129,6 +130,20 @@ questions, without opening files by hand.
 md_sdlc query --type task --status in-progress
 md_sdlc query --owner YourName --stale-days 14
 md_sdlc query --mvp-remaining
+md_sdlc query --active                       # in-progress / in-review Stories + branch + touches
+md_sdlc query --unresolved-reviews           # every open finding in the project (one table)
+md_sdlc query --unresolved-reviews --story STORY-01-first-slice   # scoped to one Story
+```
+
+### stats
+
+Status statistics — the spread, not just a single filtered list.
+
+```bash
+md_sdlc stats                                # project-wide type x status matrix + stability + open findings
+md_sdlc stats --epic EPIC-01-checkout-redesign   # one Epic: its Stories and Tasks broken down
+md_sdlc stats --by owner                     # counts grouped by owner (or: stability, scenario)
+md_sdlc stats --json                         # same numbers as JSON, for scripting
 ```
 
 ### new
@@ -184,6 +199,19 @@ changes-requested -> fixed/wontfix), separate from task/story status — see
 `CONVENTIONS.md` §5. The Story's own status can be `in-review` while its
 `review.md` still has open rows.
 
+### handover
+
+Print a self-contained context pack for one Story — branch name, the
+project's `AI-RULES.md`, the Story body, its open task rows, its `touches:`
+list, linked artifacts, and open review findings — for pasting into an AI
+coding agent. Only that Story: no siblings, no parent Epic body.
+
+```bash
+md_sdlc handover STORY-01-first-slice
+md_sdlc handover STORY-01-first-slice --full     # also inline linked artifact bodies
+md_sdlc handover STORY-01-first-slice --strict   # refuse if `validate` currently fails
+```
+
 ### archive
 
 Move a terminal-status item to `hist/`. Refuses on any non-terminal status —
@@ -192,6 +220,36 @@ no `--force` in Phase 1.
 ```bash
 md_sdlc archive TASK-01-do-the-thing
 ```
+
+### status (0.4.0)
+
+The whole project on one screen: done / now / later counts, tracks (steps
+done/total, open items, next, waits on), on site, waiting for check,
+blocked, decisions for the owner, waiting on others, experiments, recent,
+not touched N days, ideas, parked. In short layout `backlog` writes the same
+view to `backlog.md`.
+
+```bash
+md_sdlc status
+md_sdlc status PAY1          # one item, everything under it, and its rows
+md_sdlc status --json        # same data for scripts / a UI
+```
+
+### set / item / log / adopt (0.4.0)
+
+```bash
+md_sdlc set PAY1-A --status in-review --next "field check" --waits-on site
+md_sdlc set EXP-cache-size --result "64 MB hit 97%" --verdict yes
+md_sdlc set PAY1 --deployed "release-4 2026-10-25"
+md_sdlc set PAY1-A --waits-on ""                    # empty value removes the field
+md_sdlc item add PAY1-A "check postcode field" --waits site
+md_sdlc item set PAY1-A.1 done
+md_sdlc log PAY1 "kickoff done"                     # dated line on top of log.md
+md_sdlc adopt plan/old-notes.md --type adhoc --id ADHOC-old-notes --status parked
+```
+
+`set` keeps every other header field, the key order and the body. `adopt`
+adds a header to an existing file without moving it. See CONVENTIONS §14.
 
 ## Architecture
 
@@ -219,7 +277,8 @@ md-sdlc/
     repo.py                         # AiDocsRepo - the only filesystem touchpoint
   plugins/
     base_plugin.py                # BaseCommand(ABC)
-    validate/ backlog/ query/ new/ promote/ archive/ init/ review/ conventions/
+    validate/ backlog/ query/ stats/ new/ promote/ archive/ init/ review/
+    conventions/ handover/
   tests/
     fixtures/                     # committed regression fixtures, incl. one
                                    # deliberate broken-link violation for validate
