@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 — 2026-10-26
+
+Short layout, one-screen status, experiments, and upkeep commands. Driven by
+the first adopter dropping the tool (long paths, unused `tasks.md`, hand
+edits) - see `PROPOSAL-0.4.0-short-layout-status-and-experiments.md`.
+Classic projects keep working unchanged (the 35 existing tests pass as is).
+
+- New opt-in `id_style: short` with `work_dir`, `decision_waits`,
+  `stale_days` in `.sdlc/config.yml`; `init --id-style --work-dir`.
+  Short ids (`PAY1`, `PAY1-A`, `PAY1-A.3`, `PAY1-E2`, `IDEA-x`) and names of
+  id + up to 3 words. CONVENTIONS §14.
+- New commands: `status [ID] [--json]`, `set`, `item add|set`, `log`, `adopt`.
+- New status `parked` (not terminal), type `experiment`, scenarios `poc` and
+  `quality`, header fields `title`, `next`, `waits_on`, `deployed`,
+  `question`, `result`, `verdict`, `adopted`.
+- `core/overview.py`: status as plain data; terminal text, `backlog.md`
+  (short layout) and `--json` all render it - the seam for a later UI.
+- `validate`: duplicate ids and unknown verdicts are errors (both layouts);
+  short-layout rules (loose files, id/name agreement, story under its epic;
+  warnings for long names and open items without `next`).
+- `new`: short ids/paths, `--code`, `new experiment --question`; epic/story
+  get `tasks.md` + `log.md`; `new task` points to `item add` in short layout.
+- `promote --to-epic` keeps every Proposal header field; `--code` in short layout.
+- Fixes: the parsed tree is cached (status on 2,000 files well under 2 s
+  once files are on disk); header writes keep key order; row tables are read
+  by header name and allow `\|` in a cell; `archive` refreshes the cache.
+
 ## 0.3.0 — 2026-08-30
 
 Stability gate, agent handover pack, and collision guards. Driven by real

@@ -2,10 +2,15 @@
 backlog - regenerate the root Epic-level rollup, or a single Epic's
 Story+Task rollup. Always fully overwritten - this is a generated
 artifact, never a source file (design doc section 4.5).
+
+0.4.0: in short layout the root backlog.md is the same view as `status`
+(core.overview), so the file and the terminal never disagree.
 """
 import argparse
 import datetime
 
+from core import layout
+from core.overview import build_overview, render_markdown
 from core.repo import AiDocsRepo
 from core.version import __version__
 from plugins.base_plugin import BaseCommand
@@ -20,6 +25,11 @@ class Command(BaseCommand):
 
     def run(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
         items = repo.all_files()
+        if layout.is_short(repo) and not args.epic:
+            out_path = repo.root / "backlog.md"
+            out_path.write_text(render_markdown(build_overview(repo)), encoding="utf-8")
+            print(f"Wrote {out_path.relative_to(repo.root)} (status view)")
+            return
         if args.epic:
             self._write_epic_backlog(repo, items, args.epic)
         else:

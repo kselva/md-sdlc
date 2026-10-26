@@ -8,23 +8,36 @@ Implementation plan section 5.1.
 PROPOSAL-0.3.0-...). Findings are now split into ERRORS (exit 1) and
 WARNINGS (printed, exit 0) - sequencing and ceremony calls are advisory,
 schema/vocab/link breakage stays fatal.
+
+0.4.0: duplicate ids and unknown verdicts are errors in both layouts. In
+short layout (id_style: short) the fixed rules of CONVENTIONS "Short
+layout" apply instead of the classic id-prefix check - see _check_short.
 """
 import argparse
 import sys
 from pathlib import Path
 
+from core import layout
 from core.repo import AiDocsRepo
 from core.vocab import (
+    FOLDER_ITEM_FILES,
+    LOG_FILE,
+    NAME_WARN_LENGTH,
+    ROW_TABLE_FILE,
     SCENARIOS,
     STABILITY_VALUES,
     is_valid_review_status,
     is_valid_stability,
     is_valid_status,
+    is_valid_verdict,
     prefix_for_type,
 )
 from plugins.base_plugin import BaseCommand
 
 _ACTIVE_STATUSES = ("in-progress", "in-review")
+_OPEN_STATUSES = ("in-progress", "in-review", "blocked")
+# .md files allowed loose under work_dir in short layout
+_ALLOWED_LOOSE = {ROW_TABLE_FILE, LOG_FILE, "review.md", "backlog.md", "README.md"}
 
 
 class Command(BaseCommand):
@@ -64,6 +77,11 @@ class Command(BaseCommand):
 
         items = repo.all_files()
         known_ids = {item.id for item in items}
+        short = layout.is_short(repo)
+
+        for dup_id, dups in sorted(repo.duplicate_ids().items()):
+            paths = ", ".join(str(d.path.relative_to(repo.root)) for d in dups)
+            errors.append(f"duplicate id '{dup_id}' in {paths}")
 
         for item in items:
             rel = item.path.relative_to(repo.root)
@@ -86,8 +104,11 @@ class Command(BaseCommand):
                     f"{sorted(STABILITY_VALUES)}"
                 )
 
+            if item.verdict is not None and not is_valid_verdict(item.verdict):
+                errors.append(f"{rel}: verdict '{item.verdict}' not one of open, yes, no, partly")
+
             expected_prefix = prefix_for_type(item.type)
-            if expected_prefix and not item.id.startswith(expected_prefix + "-"):
+            if not short and expected_prefix and not item.id.startswith(expected_prefix + "-"):
                 errors.append(
                     f"{rel}: id '{item.id}' does not match expected prefix "
                     f"'{expected_prefix}-' for type '{item.type}'"
@@ -101,6 +122,8 @@ class Command(BaseCommand):
                     )
 
         self._check_rows(repo, items, errors)
+        if short:
+            self._check_short(repo, items, errors, warnings)
         self._check_stability_gate(repo, items, errors, warnings)
         self._check_touches_overlap(items, warnings)
 
@@ -110,7 +133,7 @@ class Command(BaseCommand):
 
     def _check_rows(self, repo: AiDocsRepo, items: list, errors: list[str]) -> None:
         for item in items:
-            if item.type != "story":
+            if item.type != "story" and not (item.type == "epic" and layout.is_short(repo)):
                 continue
 
             tasks_md = item.path.parent / "tasks.md"
@@ -126,6 +149,11 @@ class Command(BaseCommand):
                         errors.append(
                             f"{tasks_md.relative_to(repo.root)}: row '{row.id}' has "
                             f"invalid status '{row.status}'"
+                        )
+                    if row.verdict is not None and not is_valid_verdict(row.verdict):
+                        errors.append(
+                            f"{tasks_md.relative_to(repo.root)}: row '{row.id}' has "
+                            f"invalid verdict '{row.verdict}'"
                         )
 
             review_md = item.path.parent / "review.md"
@@ -151,6 +179,42 @@ class Command(BaseCommand):
                             f"{review_md.relative_to(repo.root)} has unresolved finding "
                             f"'{row.id}' (status={row.status})"
                         )
+
+    # -- 0.4.0 short layout rules ----------------------------------------
+
+    def _check_short(self, repo: AiDocsRepo, items: list, errors: list[str], warnings: list[str]) -> None:
+        by_id = {i.id: i for i in items}
+        work = layout.work_path(repo).resolve()
+
+        for item in items:
+            if item.kind != "work-item" or repo.is_archived(item):
+                continue
+            rel = item.path.relative_to(repo.root)
+            name = item.path.parent.name if item.is_folder_item else item.path.stem
+
+            if item.type == "story" and item.parent in by_id and not item.id.startswith(item.parent + "-"):
+                errors.append(f"{rel}: story id '{item.id}' must start with its epic id '{item.parent}-'")
+            if not item.adopted and _is_under(item.path, work) and not (name == item.id or name.startswith(item.id + "-")):
+                errors.append(f"{rel}: name '{name}' must start with its id '{item.id}' (or adopt the file)")
+            if len(name) > NAME_WARN_LENGTH:
+                warnings.append(f"{rel}: name '{name}' is {len(name)} characters - keep it under {NAME_WARN_LENGTH}")
+            if item.type in ("epic", "story") and item.status in _OPEN_STATUSES and not item.next:
+                warnings.append(f"{rel}: {item.status} {item.type} has no 'next:' line")
+
+        if work == repo.root.resolve():
+            return  # no work_dir - the loose-file rule needs a dedicated folder
+        tracked = {i.path.resolve() for i in items}
+        item_folders = {i.path.parent.resolve() for i in items if i.path.name in FOLDER_ITEM_FILES}
+        for path in sorted(work.rglob("*.md")):
+            path = path.resolve()
+            if path in tracked or path.name in _ALLOWED_LOOSE:
+                continue
+            if any(parent in item_folders for parent in path.parents):
+                continue  # attached to an epic/story
+            errors.append(
+                f"{path.relative_to(repo.root.resolve())}: loose file in {repo.project.work_dir}/ - "
+                f"adopt it (adopt FILE --type ... --id ...) or move it"
+            )
 
     # -- 0.3.0 stability test gate --------------------------------------
 
@@ -273,3 +337,11 @@ def _is_prefix(short: str, long: str) -> bool:
     if not short or not long or len(short) >= len(long):
         return False
     return long.startswith(short.rstrip("/") + "/")
+
+
+def _is_under(path: Path, folder: Path) -> bool:
+    try:
+        path.resolve().relative_to(folder)
+        return True
+    except ValueError:
+        return False

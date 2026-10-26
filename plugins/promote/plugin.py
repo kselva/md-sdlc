@@ -4,12 +4,17 @@ promote - row -> own file, or Proposal -> Epic (on acceptance).
 Design doc reference: SDLC_Tracking_System_Design.md section 10.4 (#5),
 section 7 (acceptance is a spawning event), Implementation plan section 5.5,
 section 7 decision #2 (accepted Proposal reuses status: done).
+
+0.4.0: the Proposal header is updated in place (extra fields kept); in
+short layout the new Epic needs --code and gets tasks.md/log.md, and rows
+stay rows (--to-file is classic only).
 """
 import argparse
 import datetime
 import sys
 
 from core import frontmatter as fmwrite
+from core import layout
 from core.repo import AiDocsRepo
 from core.vocab import slugify
 from plugins.base_plugin import BaseCommand
@@ -24,6 +29,7 @@ class Command(BaseCommand):
         parser.add_argument("--to-file", action="store_true", help="Promote a tasks.md row to its own TASK-xx.md file")
         parser.add_argument("--to-epic", action="store_true", help="Promote an accepted Proposal to a new Epic")
         parser.add_argument("--story", default=None, help="Story id the row belongs to (required with --to-file)")
+        parser.add_argument("--code", default=None, help="Short layout: code for the new Epic, e.g. PAY2")
 
     def run(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
         if args.to_file:
@@ -35,6 +41,9 @@ class Command(BaseCommand):
             sys.exit(1)
 
     def _row_to_file(self, repo: AiDocsRepo, args: argparse.Namespace) -> None:
+        if layout.is_short(repo):
+            print("ERROR: in short layout open items stay rows - for bigger work use 'new story' or 'new experiment'")
+            sys.exit(1)
         if not args.story:
             print("ERROR: --story is required with --to-file")
             sys.exit(1)
@@ -57,7 +66,7 @@ class Command(BaseCommand):
             "status": row.status,
             "parent": args.story,
             "owner": row.owner or "unassigned",
-            "updated": datetime.date.today().isoformat(),
+            "updated": datetime.date.today(),
             "scenario": row.scenario or "feature",
             "promoted": f"was row {row.id} in tasks.md",
         }
@@ -80,10 +89,20 @@ class Command(BaseCommand):
             print(f"ERROR: '{args.id}' is not a known proposal")
             sys.exit(1)
 
-        title = proposal.body.strip().lstrip("#").strip().splitlines()[0] if proposal.body.strip() else args.id
-        epic_id = f"EPIC-{slugify(title)}"
-        target_path = repo.root / epic_id / "epic.md"
-        target_path.parent.mkdir(parents=True, exist_ok=True)
+        title = proposal.display_title
+        if layout.is_short(repo):
+            problem = layout.check_code(args.code)
+            if problem:
+                print(f"ERROR: {problem}")
+                sys.exit(1)
+            epic_id = layout.epic_id(args.code)
+            target_path = layout.item_path(repo, "epic", epic_id, title, None)
+        else:
+            epic_id = f"EPIC-{slugify(title)}"
+            target_path = repo.root / epic_id / "epic.md"
+        if repo.find(epic_id) is not None:
+            print(f"ERROR: id '{epic_id}' already exists")
+            sys.exit(1)
 
         metadata = {
             "id": epic_id,
@@ -91,18 +110,16 @@ class Command(BaseCommand):
             "kind": "work-item",
             "status": "not-started",
             "owner": proposal.owner or "unassigned",
-            "updated": datetime.date.today().isoformat(),
+            "updated": datetime.date.today(),
             "originated_from": proposal.id,
             "mvp": False,
         }
-        fmwrite.write(target_path, metadata, f"\n# {title}\n\n{proposal.body.strip()}\n")
+        if layout.is_short(repo):
+            metadata["title"] = title
+        repo.write_item(target_path, metadata, f"\n# {title}\n\n{proposal.body.strip()}\n")
+        if layout.is_short(repo):
+            repo.init_item_folder(epic_id, target_path.parent)
 
-        proposal_meta = {
-            "id": proposal.id, "type": proposal.type, "kind": proposal.kind,
-            "status": "done", "owner": proposal.owner, "updated": datetime.date.today().isoformat(),
-            "scenario": proposal.scenario, "promoted": epic_id,
-        }
-        proposal_meta = {k: v for k, v in proposal_meta.items() if v is not None}
-        fmwrite.write(proposal.path, proposal_meta, proposal.body)
+        repo.update_header(proposal, {"status": "done", "promoted": epic_id})
 
         print(f"Promoted {proposal.id} -> {epic_id} at {target_path.relative_to(repo.root)}")

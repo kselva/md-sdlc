@@ -36,6 +36,11 @@ _FROZEN_PLUGIN_MODULES = [
     "plugins.review.plugin",
     "plugins.handover.plugin",
     "plugins.stats.plugin",
+    "plugins.status.plugin",
+    "plugins.set.plugin",
+    "plugins.item.plugin",
+    "plugins.log.plugin",
+    "plugins.adopt.plugin",
 ]
 
 

@@ -20,7 +20,7 @@ from core.vocab import (
 )
 from plugins.base_plugin import BaseCommand
 
-_WORK_ITEM_TYPE_ORDER = ("proposal", "epic", "story", "task", "adhoc")
+_WORK_ITEM_TYPE_ORDER = ("proposal", "epic", "story", "task", "adhoc", "experiment")
 _UNRESOLVED = ("open", "changes-requested")
 _BY_FIELDS = ("owner", "stability", "scenario")
 

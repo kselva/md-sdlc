@@ -37,8 +37,34 @@ class WorkItemFile:
     # overlap warning and by `handover` - never checked against the filesystem.
     stability: str | None = None
     touches: list[str] = field(default_factory=list)
+    # 0.4.0 situational fields. title carries the full name now that short
+    # layout keeps file names short; next / waits_on / deployed feed the
+    # status view; question / result / verdict are for experiments.
+    title: str | None = None
+    next: str | None = None
+    waits_on: str | None = None
+    deployed: str | None = None
+    question: str | None = None
+    result: str | None = None
+    verdict: str | None = None
+    adopted: str | None = None
     extra: dict = field(default_factory=dict)
     body: str = ""
+
+    @property
+    def display_title(self) -> str:
+        """Header title, else the body's first '# ' heading, else the id."""
+        if self.title:
+            return str(self.title)
+        for line in self.body.splitlines():
+            if line.startswith("# "):
+                return line[2:].strip()
+        return self.id
+
+    @property
+    def is_folder_item(self) -> bool:
+        """True for epic.md / story.md - the item owns its whole folder."""
+        return self.path.name in ("epic.md", "story.md")
 
 
 @dataclass
@@ -51,6 +77,9 @@ class TaskRow:
     summary: str
     story_id: str
     row_index: int
+    # 0.4.0 short-layout columns (absent in classic tables)
+    waits: str | None = None
+    verdict: str | None = None
 
 
 @dataclass

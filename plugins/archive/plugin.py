@@ -41,4 +41,5 @@ class Command(BaseCommand):
             sys.exit(1)
 
         shutil.move(str(source), str(dest))
+        repo.invalidate()
         print(f"Archived {args.id} -> {dest.relative_to(repo.root)}")
